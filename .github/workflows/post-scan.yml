@@ -1,0 +1,67 @@
+# 工作流名称
+name: 端口扫描（GitHub Actions）
+
+# 触发方式：支持手动触发 + 可选定时触发
+on:
+  # 手动触发（核心，推荐）：在Actions页面点击"Run workflow"
+  workflow_dispatch:
+    # 手动触发时可自定义参数（不用改脚本）
+    inputs:
+      target_ip:
+        description: '目标IP地址'
+        required: true
+        default: '43.248.103.155'  # 默认值，可手动修改
+      start_port:
+        description: '起始端口'
+        required: true
+        default: '1'
+      end_port:
+        description: '结束端口'
+        required: true
+        default: '65535'
+      workers:
+        description: '线程数'
+        required: true
+        default: '200'
+      timeout:
+        description: '超时时间（秒）'
+        required: true
+        default: '5'
+  # 可选：定时触发（比如每天凌晨2点扫描，注释掉可关闭）
+  # schedule:
+  #   - cron: '0 2 * * *'  # UTC时间，对应北京时间10点
+
+# 运行作业
+jobs:
+  scan-ports:
+    # 运行环境：GitHub 提供的 Ubuntu 最新版
+    runs-on: ubuntu-latest
+    # 运行步骤
+    steps:
+      # 步骤1：拉取仓库代码到GitHub服务器
+      - name: 拉取仓库代码
+        uses: actions/checkout@v4
+
+      # 步骤2：设置Python环境（匹配脚本运行需求）
+      - name: 设置Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'  # 推荐3.8+，兼容所有语法
+
+      # 步骤3：执行端口扫描脚本（传入手动/定时参数）
+      - name: 运行端口扫描脚本
+        run: |
+          python port_scanner.py \
+            --ip ${{ github.event.inputs.target_ip }} \
+            --start-port ${{ github.event.inputs.start_port }} \
+            --end-port ${{ github.event.inputs.end_port }} \
+            --workers ${{ github.event.inputs.workers }} \
+            --timeout ${{ github.event.inputs.timeout }}
+
+      # 步骤4：上传扫描结果文件（方便下载）
+      - name: 上传扫描结果
+        uses: actions/upload-artifact@v4
+        with:
+          name: open-ports-result  # 结果文件名称
+          path: open_ports.txt     # 要上传的文件路径
+          retention-days: 7        # 文件保留7天，可修改
